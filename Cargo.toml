@@ -1,0 +1,22 @@
+[package]
+name = "aws_lambda"
+version = "0.1.0"
+authors = ["komekome09 <fanmaskome@gmail.com>"]
+autobins = false
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+lambda_runtime = "*"
+serde = "*"
+serde_json = "*"
+serde_derive = "*"
+log = "*"
+simple_logger = "*"
+simple-error = "*"
+reqwest = "*"
+
+[[bin]]
+name = "bootstrap"
+path = "src/main.rs"
