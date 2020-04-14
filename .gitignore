@@ -1,2 +1,4 @@
-/target
+target/*
 *.zip
+cargo-registry/*
+cargo-git/*
