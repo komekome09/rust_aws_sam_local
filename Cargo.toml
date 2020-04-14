@@ -15,7 +15,8 @@ serde_derive = "*"
 log = "*"
 simple_logger = "*"
 simple-error = "*"
-reqwest = "*"
+rustls = "*"
+reqwest = { version = "*", features = ["blocking", "rustls-tls"] }
 
 [[bin]]
 name = "bootstrap"
