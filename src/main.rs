@@ -6,11 +6,13 @@ extern crate serde_derive;
 extern crate log;
 extern crate simple_logger;
 extern crate reqwest;
+extern crate scraper;
 
 use lambda::error::HandlerError;
 use std::error::Error;
 use simple_error::bail;
-use std::env;
+use scraper::{Selector, Html};
+use std::io::Read;
 
 #[derive(Deserialize, Clone)]
 struct CustomEvent {
@@ -30,56 +32,55 @@ fn main() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[derive(Serialize, Deserialize)]
-struct AuthToken {
-    token_type: String,
-    expires_in: u32,
-    ext_expires_in: u32,
-    access_token: String,
+#[derive(Debug)]
+struct ProductInfo {
+    name: String,
+    price: String,
+    rest: String,
 }
 
 fn my_handler(e: CustomEvent, c: lambda::Context) -> Result<CustomOutput, HandlerError> {
-    if e.first_name == "" {
-        error!("Empty first name in request {}", c.aws_request_id);
-        bail!("Empty first name");
-    }
-
-    let client_id = match env::var("CLIENT_ID") {
-        Ok(n) => n,
-        Err(_) => bail!("CLIENT_ID not found")
-    };
-    let secret_key = match env::var("CLIENT_SECRET") {
-        Ok(n) => n,
-        Err(_) => bail!("CLIENT_SECRET not found")
-    };
-    let tenant_id = match env::var("TENANT_ID") {
-        Ok(n) => n,
-        Err(_) => bail!("TENANT_ID not found")
-    };
-
-    let params = [("client_id", client_id.as_str()),
-                    ("scope", "https://graph.microsoft.com/.default"),
-                    ("client_secret", secret_key.as_str()),
-                    ("grant_type", "client_credentials")];
     let client = reqwest::blocking::Client::new();
-    let url = format!("https://login.microsoftonline.com/{}/oauth2/v2.0/token", tenant_id);
-    let body_json = client.post(&url)
-                    .header(reqwest::header::CONTENT_TYPE, "application/x-www-form-urlencoded")
-                    .form(&params)
+    let url = "https://www.amazon.co.jp/dp/B079211FWH";
+    let body_json = client.get(url) 
                     .send()
                     .unwrap()
                     .text()
                     .unwrap();
+    let parse_doc = Html::parse_document(&body_json);
 
-    let json: AuthToken = match serde_json::from_str(&body_json) {
-        Ok(n) => n,
-        Err(n) => {
-            error!("Error: {:?}", n);
-            bail!("Fail get token");
-        }
+    let mut product_name = String::new();
+    for node in parse_doc.select(&Selector::parse("span#productTitle").unwrap()) {
+        product_name = node.inner_html().clone();
+    }
+    
+    let mut price = String::new();
+    for node in parse_doc.select(&Selector::parse("span#priceblock_ourprice").unwrap()) {
+        price = node.inner_html().clone();
+    }
+
+    let mut rest = String::new();
+    for node in parse_doc.select(&Selector::parse("#availability > span:nth-child(1)").unwrap()) {
+        rest = node.inner_html().clone();
+    }
+
+    let info = ProductInfo {
+        name: product_name.trim().to_string(),
+        price: price.trim().to_string(),
+        rest: rest.trim().to_string(),
     };
 
+    let post_client = reqwest::blocking::Client::new();
+    let body = format!(r#"{{"text": "name: {},price: {},rest: {}"}}"#, info.name, info.price, info.rest);
+    let mut post_slack = client.post("https://hooks.slack.com/services/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")
+                            .header(reqwest::header::CONTENT_TYPE, "application/json")
+                            .body(body)
+                            .send()
+                            .unwrap();
+    let mut buf = String::new();
+    post_slack.read_to_string(&mut buf).expect("Failed to read response");
+
     Ok(CustomOutput {
-        message: format!("{}", json.access_token),
+        message: format!("{:?}\n{}", info, buf),
     })
 }

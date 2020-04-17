@@ -17,6 +17,7 @@ simple_logger = "*"
 simple-error = "*"
 rustls = "*"
 reqwest = { version = "*", features = ["blocking", "rustls-tls"] }
+scraper = "*"
 
 [[bin]]
 name = "bootstrap"
