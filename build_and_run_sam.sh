@@ -14,4 +14,4 @@ fi
 cd $HOME/rust/rust_aws_sam_local/sam
 
 zip -j rust.zip ../target/x86_64-unknown-linux-musl/release/bootstrap
-sam local invoke -e test.json
+sam local invoke -e test.json --env-vars env.json

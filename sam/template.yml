@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+    RustDropBox:
+        Type: "AWS::Serverless::Function"
+        Properties:
+            CodeUri: rust.zip
+            Runtime: provided
+            Handler: lambda_function.lambda_handler
+            Policies: AWSLambdaBasicExecutionRole
+            Events:
+                CustomEvent:
+                    Type: Api
+                    Properties:
+                        Path: /
+                        Method: get
+            Environment:
+                Variables:
+                    SLACK_API_TOKEN: !Ref SLACK_API_TOKEN
+                    SLACK_CHANNEL_ID: !Ref SLACK_CHANNEL_ID
+                    PRODUCT_URL: !Ref PRODUCT_URL
